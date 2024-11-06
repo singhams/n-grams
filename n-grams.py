@@ -10,7 +10,7 @@ from nltk.metrics import BigramAssocMeasures, TrigramAssocMeasures
 from nltk.util import ngrams
 
 # Download necessary NLTK data
-nltk.download('punkt_tab')
+nltk.download('punkt')
 nltk.download('stopwords')
 nltk.download('averaged_perceptron_tagger')
 
