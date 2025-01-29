@@ -90,24 +90,8 @@ def process_titles_together_for_ngrams(titles, remove_stopwords=True, top_n=20):
 # Streamlit app
 st.title("N-Gram Frequency Analyzer")
 
-# File uploader
-uploaded_file = st.file_uploader("Upload a file", type=["txt", "xlsx"])
-
-if uploaded_file is not None:
-    if uploaded_file.name.endswith('.txt'):
-        # Process text file
-        text = uploaded_file.read().decode('utf-8')
-        titles = text.splitlines()
-    elif uploaded_file.name.endswith('.xlsx'):
-        # Process Excel file
-        df = pd.read_excel(uploaded_file)
-        # Automatically select the first column
-        titles = df.iloc[:, 0].dropna().tolist()
-
-    if titles:
-        results = process_titles_separately_for_ngrams(titles)
-        st.write(results)
-
+# File uploader for Excel or text input
+uploaded_file = st.file_uploader("Choose an Excel or text file", type=["xlsx", "txt"])
 # N-Gram selection
 ngram_type = st.radio("Select N-Gram Type", ("Bigrams", "Trigrams", "Quadgrams", "All Three"))
 
@@ -123,7 +107,7 @@ if st.button("Start Analysis"):
         # Load the file into a DataFrame or list of lines
         if uploaded_file.name.endswith('.xlsx'):
             df = pd.read_excel(uploaded_file)
-            titles = df['Page Titles'].tolist()  # Change 'Page Titles' to the actual column name in your Excel file
+            titles = df.iloc[:, 0].dropna().tolist()  # Automatically select the first column
         elif uploaded_file.name.endswith('.txt'):
             titles = uploaded_file.read().decode('utf-8').splitlines()
         
