@@ -90,8 +90,32 @@ def process_titles_together_for_ngrams(titles, remove_stopwords=True, top_n=20):
 # Streamlit app
 st.title("N-Gram Frequency Analyzer")
 
-# File uploader for Excel or text input
-uploaded_file = st.file_uploader("Choose an Excel or text file", type=["xlsx", "txt"])
+# File uploader
+uploaded_file = st.file_uploader("Upload a file", type=["txt", "xlsx"])
+
+if uploaded_file is not None:
+    if uploaded_file.name.endswith('.txt'):
+        # Process text file
+        text = uploaded_file.read().decode('utf-8')
+        titles = text.splitlines()
+    elif uploaded_file.name.endswith('.xlsx'):
+        # Process Excel file
+        df = pd.read_excel(uploaded_file)
+        # Display the column names to the user
+        st.write("Columns in the uploaded Excel file:", df.columns.tolist())
+        column_name = st.text_input("Enter the column header name containing the text")
+        if column_name:
+            if column_name in df.columns:
+                titles = df[column_name].dropna().tolist()
+            else:
+                st.error(f"Column '{column_name}' not found in the uploaded Excel file.")
+                titles = []
+        else:
+            titles = []
+
+    if titles:
+        results = process_titles_separately_for_ngrams(titles)
+        st.write(results)
 
 # N-Gram selection
 ngram_type = st.radio("Select N-Gram Type", ("Bigrams", "Trigrams", "Quadgrams", "All Three"))
