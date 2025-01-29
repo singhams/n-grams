@@ -101,17 +101,8 @@ if uploaded_file is not None:
     elif uploaded_file.name.endswith('.xlsx'):
         # Process Excel file
         df = pd.read_excel(uploaded_file)
-        # Display the column names to the user
-        st.write("Columns in the uploaded Excel file:", df.columns.tolist())
-        column_name = st.text_input("Enter the column header name containing the text")
-        if column_name:
-            if column_name in df.columns:
-                titles = df[column_name].dropna().tolist()
-            else:
-                st.error(f"Column '{column_name}' not found in the uploaded Excel file.")
-                titles = []
-        else:
-            titles = []
+        # Automatically select the first column
+        titles = df.iloc[:, 0].dropna().tolist()
 
     if titles:
         results = process_titles_separately_for_ngrams(titles)
