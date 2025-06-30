@@ -22,6 +22,13 @@ def process_text_for_ngrams(text, remove_stopwords=True, top_n=20):
         stop_words = set(stopwords.words('english'))
         words = [word for word in words if word not in stop_words]
     
+    if len(words) < 2:
+        raise ValueError("Not enough words for bigrams.")
+    if len(words) < 3:
+        raise ValueError("Not enough words for trigrams.")
+    if len(words) < 4:
+        raise ValueError("Not enough words for quadgrams.")
+    
     bigram_finder = BigramCollocationFinder.from_words(words)
     bigrams = bigram_finder.nbest(BigramAssocMeasures.likelihood_ratio, top_n)
     
@@ -34,21 +41,9 @@ def process_text_for_ngrams(text, remove_stopwords=True, top_n=20):
     
     return bigrams, trigrams, common_quadgrams
 
-# Function to process each row separately for n-grams
-def process_data_separately_for_ngrams(data, remove_stopwords=True, top_n=20):
-    results = []
-    for row in data:
-        bigrams, trigrams, quadgrams = process_text_for_ngrams(row, remove_stopwords, top_n)
-        results.append({
-            'text': row,
-            'bigrams': ', '.join([' '.join(bigram) for bigram in bigrams]),
-            'trigrams': ', '.join([' '.join(trigram) for trigram in trigrams]),
-            'quadgrams': ', '.join([' '.join(quadgram) for quadgram, _ in quadgrams])
-        })
-    return results
-
 # Function to process all data together for n-grams
 def process_data_together_for_ngrams(data, remove_stopwords=True, top_n=20):
+    data = [str(item) for item in data]
     combined_text = ' '.join(data)
     combined_text = combined_text.lower()
     combined_text = re.sub(r'[^a-zA-Z0-9\s]', '', combined_text)
@@ -80,53 +75,58 @@ uploaded_file = st.file_uploader("Choose an Excel or text file", type=["xlsx", "
 
 # Initialize data
 data = []
+file_type = None
 
 if uploaded_file is not None:
     if uploaded_file.name.endswith('.xlsx'):
-        df = pd.read_excel(uploaded_file, header=None)  # Read without assuming a header
+        file_type = "excel"
+        df = pd.read_excel(uploaded_file, header=None)
         if not df.empty:
-            data = df.iloc[:, 0].dropna().tolist()  # Select the first column and drop NaN values
+            data = df.iloc[:, 0].dropna().astype(str).tolist()
+            st.success(f"Uploaded Excel file with {len(data)} rows.")
         else:
             st.error("The uploaded Excel file is empty.")
     elif uploaded_file.name.endswith('.txt'):
+        file_type = "text"
         content = uploaded_file.read().decode('utf-8').strip()
         if content:
-            data = content.splitlines()
+            data = content
+            st.success(f"Uploaded text file with {len(content)} characters.")
         else:
             st.error("The uploaded text file is empty.")
 
-# N-Gram selection
-ngram_type = st.radio("Select N-Gram Type", ("Bigrams", "Trigrams", "Quadgrams", "All Three"))
+# Workflow for Excel files
+if file_type == "excel" and data:
+    top_n = st.number_input("Enter the number of top n-grams to display", min_value=1, value=20)
 
-# Processing mode selection
-processing_mode = st.radio("Select Processing Mode", ("Process all text together", "Process each line/row separately"))
+    if st.button("Start Analysis"):
+        combined_result_ngrams = process_data_together_for_ngrams(data, top_n=top_n)
+        combined_results_df = pd.DataFrame({
+            'bigrams': [' '.join(map(str, bigram)) for bigram, _ in combined_result_ngrams['bigrams']],
+            'bigram_freq': [freq for _, freq in combined_result_ngrams['bigrams']],
+            'trigrams': [' '.join(map(str, trigram)) for trigram, _ in combined_result_ngrams['trigrams']],
+            'trigram_freq': [freq for _, freq in combined_result_ngrams['trigrams']],
+            'quadgrams': [' '.join(map(str, quadgram)) for quadgram, _ in combined_result_ngrams['quadgrams']],
+            'quadgram_freq': [freq for _, freq in combined_result_ngrams['quadgrams']]
+        })
+        st.write("Combined N-Gram Results", combined_results_df)
+        combined_results_df.to_excel("combined_ngrams_results.xlsx", index=False)
+        st.download_button(label="Download Combined Results as Excel", data=open("combined_ngrams_results.xlsx", 'rb'), file_name="combined_ngrams_results.xlsx")
 
-# Top-N selection (conditionally displayed)
-top_n = st.number_input("Enter the number of top n-grams to display", min_value=1, value=20)
+# Workflow for text files
+elif file_type == "text" and data:
+    top_n = st.number_input("Enter the number of top n-grams to display", min_value=1, value=20)
 
-# Process button
-if st.button("Start Analysis"):
-    if data:
-        if processing_mode == "Process all text together":
-            combined_result_ngrams = process_data_together_for_ngrams(data, top_n=top_n)
-            combined_results_df = pd.DataFrame({
-                'bigrams': [' '.join(bigram) for bigram, _ in combined_result_ngrams['bigrams']],
-                'bigram_freq': [freq for _, freq in combined_result_ngrams['bigrams']],
-                'trigrams': [' '.join(trigram) for trigram, _ in combined_result_ngrams['trigrams']],
-                'trigram_freq': [freq for _, freq in combined_result_ngrams['trigrams']],
-                'quadgrams': [' '.join(quadgram) for quadgram, _ in combined_result_ngrams['quadgrams']],
-                'quadgram_freq': [freq for _, freq in combined_result_ngrams['quadgrams']]
-            })
-            st.write("Combined N-Gram Results", combined_results_df)
-            combined_output_file = 'combined_ngrams_results.xlsx'
-            combined_results_df.to_excel(combined_output_file, index=False)
-            st.download_button(label="Download Combined Results as Excel", data=open(combined_output_file, 'rb'), file_name=combined_output_file)
-        else:
-            separate_results_ngrams = process_data_separately_for_ngrams(data, top_n=top_n)
-            separate_results_df = pd.DataFrame(separate_results_ngrams)
-            st.write("Separate N-Gram Results", separate_results_df)
-            separate_output_file = 'separate_ngrams_results.xlsx'
-            separate_results_df.to_excel(separate_output_file, index=False)
-            st.download_button(label="Download Separate Results as Excel", data=open(separate_output_file, 'rb'), file_name=separate_output_file)
-    else:
-        st.error("No valid data found in the uploaded file.")
+    if st.button("Start Analysis"):
+        combined_result_ngrams = process_data_together_for_ngrams([data], top_n=top_n)
+        combined_results_df = pd.DataFrame({
+            'bigrams': [' '.join(map(str, bigram)) for bigram, _ in combined_result_ngrams['bigrams']],
+            'bigram_freq': [freq for _, freq in combined_result_ngrams['bigrams']],
+            'trigrams': [' '.join(map(str, trigram)) for trigram, _ in combined_result_ngrams['trigrams']],
+            'trigram_freq': [freq for _, freq in combined_result_ngrams['trigrams']],
+            'quadgrams': [' '.join(map(str, quadgram)) for quadgram, _ in combined_result_ngrams['quadgrams']],
+            'quadgram_freq': [freq for _, freq in combined_result_ngrams['quadgrams']]
+        })
+        st.write("N-Gram Results", combined_results_df)
+        combined_results_df.to_excel("text_ngrams_results.xlsx", index=False)
+        st.download_button(label="Download Results as Excel", data=open("text_ngrams_results.xlsx", 'rb'), file_name="text_ngrams_results.xlsx")
