@@ -70,6 +70,18 @@ def process_data_together_for_ngrams(data, remove_stopwords=True, top_n=20):
 # Streamlit app
 st.title("N-Gram Frequency Analyzer")
 
+st.markdown("""
+This app takes an **Excel file** (with rows of text) or a **text file** (with a single block of text) as input and analyzes the most common **bigrams**, **trigrams**, and **quadgrams** (2-word, 3-word, and 4-word combinations). 
+
+### Inputs:
+- **Excel file**: The first column of the file is analyzed.
+- **Text file**: The entire text is analyzed as a single block.
+
+### Outputs:
+- A table showing the most frequent bigrams, trigrams, and quadgrams.
+- An option to download the results as an Excel file.
+""")
+
 # File uploader for Excel or text input
 uploaded_file = st.file_uploader("Choose an Excel or text file", type=["xlsx", "txt"])
 
